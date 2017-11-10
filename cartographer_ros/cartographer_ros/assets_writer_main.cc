@@ -46,7 +46,7 @@
 #include "tf2_msgs/TFMessage.h"
 #include "tf2_ros/buffer.h"
 #include "urdf/model.h"
-
+#include <cartographer/io/trajectory_extractor.h>
 DEFINE_string(configuration_directory, "",
               "First directory in which configuration files are searched, "
               "second is always the Cartographer installation to allow "
@@ -69,6 +69,12 @@ DEFINE_string(output_file_prefix, "",
               "define the output directory. If empty, the first bag filename "
               "will be used.");
 
+static inline std::string GetFileFolderName(const std::string &FilePath)
+{
+    size_t found;
+    found = FilePath.find_last_of("/\\");
+    return FilePath.substr(0,found);
+}
 namespace cartographer_ros {
 namespace {
 
@@ -115,7 +121,6 @@ std::unique_ptr<carto::io::PointsBatch> HandleMessage(
   }
   return points_batch;
 }
-
 void Run(const std::string& pose_graph_filename,
          const std::vector<std::string>& bag_filenames,
          const std::string& configuration_directory,
@@ -172,6 +177,15 @@ void Run(const std::string& pose_graph_filename,
 
   const std::string tracking_frame =
       lua_parameter_dictionary.GetString("tracking_frame");
+
+   if(lua_parameter_dictionary.HasKey("trajectory_text_file"))
+   {
+      std::string filename= lua_parameter_dictionary.GetString("trajectory_text_file");
+      std::string text_filename=GetFileFolderName(pose_graph_filename)+"/"+filename;
+      carto::io::TrajectoryExtractor trajectory_extractor(pose_graph_proto);
+      trajectory_extractor.ExtractToTextFile(text_filename);
+   }
+
   do {
     for (size_t trajectory_id = 0; trajectory_id < bag_filenames.size();
          ++trajectory_id) {
