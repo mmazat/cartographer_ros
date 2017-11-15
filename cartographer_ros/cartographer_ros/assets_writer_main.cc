@@ -47,6 +47,7 @@
 #include "tf2_ros/buffer.h"
 #include "urdf/model.h"
 #include <cartographer/io/trajectory_extractor.h>
+#include <nav_msgs/Odometry.h>
 DEFINE_string(configuration_directory, "",
               "First directory in which configuration files are searched, "
               "second is always the Cartographer installation to allow "
@@ -121,6 +122,27 @@ std::unique_ptr<carto::io::PointsBatch> HandleMessage(
   }
   return points_batch;
 }
+bool GetInitialPositionFromBag(std::string bag_filename, Eigen::Vector3d &X0)
+{
+  bool found_init_corodinate=false;
+  rosbag::Bag bag;
+  bag.open(bag_filename, rosbag::bagmode::Read);
+  rosbag::View view(bag);
+  for (const rosbag::MessageInstance& message : view) {
+    if (message.isType<nav_msgs::Odometry>()) {
+      auto odom_message = message.instantiate<nav_msgs::Odometry>();
+      auto pos=odom_message->pose.pose.position;
+      X0[0] = pos.x;
+      X0[1] = pos.y;
+      X0[2] = pos.z;
+      found_init_corodinate=true;
+      break;
+  }
+  }
+  bag.close();
+
+  return found_init_corodinate;
+}
 void Run(const std::string& pose_graph_filename,
          const std::vector<std::string>& bag_filenames,
          const std::string& configuration_directory,
@@ -178,13 +200,29 @@ void Run(const std::string& pose_graph_filename,
   const std::string tracking_frame =
       lua_parameter_dictionary.GetString("tracking_frame");
 
-   if(lua_parameter_dictionary.HasKey("trajectory_text_file"))
+  //dumpting trajectory to text and sbet file
+  std::string text_filename=GetFileFolderName(pose_graph_filename)+"/trajectory.txt";
+  std::string sbet_filename=GetFileFolderName(pose_graph_filename)+"/trajecotry.sbet";
+  carto::io::TrajectoryExtractor trajectory_extractor(pose_graph_proto);
+  //shift to be applied to the trajectory
+   Eigen::Vector3d origin_ecef;
+   origin_ecef.setZero();
+   if(lua_parameter_dictionary.HasKey("georef_trajectory"))
    {
-      std::string filename= lua_parameter_dictionary.GetString("trajectory_text_file");
-      std::string text_filename=GetFileFolderName(pose_graph_filename)+"/"+filename;
-      carto::io::TrajectoryExtractor trajectory_extractor(pose_graph_proto);
-      trajectory_extractor.ExtractToTextFile(text_filename);
+      //std::string prefix= lua_parameter_dictionary.GetString("trajectory_prefix");
+      //check for odometery message in the bag
+      if(GetInitialPositionFromBag(bag_filenames[0],origin_ecef))
+      {
+        ROS_INFO_STREAM("ECEF coordinate of the origin found from bag " <<origin_ecef);
+      }
+      else
+      {
+        ROS_ERROR_STREAM("could not find initial ecef position from bag");
+      }
+
    }
+   trajectory_extractor.ExtractToTextFile(text_filename);
+   trajectory_extractor.ExtractToSBETFile(sbet_filename,origin_ecef);
 
   do {
     for (size_t trajectory_id = 0; trajectory_id < bag_filenames.size();
