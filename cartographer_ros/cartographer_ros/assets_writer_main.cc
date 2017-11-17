@@ -202,7 +202,7 @@ void Run(const std::string& pose_graph_filename,
 
   //dumpting trajectory to text and sbet file
   std::string text_filename=GetFileFolderName(pose_graph_filename)+"/trajectory.txt";
-  std::string sbet_filename=GetFileFolderName(pose_graph_filename)+"/trajecotry.sbet";
+  std::string sbet_filename=GetFileFolderName(pose_graph_filename)+"/trajecotry_sbet.OUT";
   carto::io::TrajectoryExtractor trajectory_extractor(pose_graph_proto);
   //shift to be applied to the trajectory
    Eigen::Vector3d origin_ecef;
