@@ -200,8 +200,7 @@ void Run(const std::string& pose_graph_filename,
   const std::string tracking_frame =
       lua_parameter_dictionary.GetString("tracking_frame");
 
-  //dumpting trajectory to text and sbet file
-  std::string text_filename=GetFileFolderName(pose_graph_filename)+"/trajectory.txt";
+  //dumpting trajectory to text and sbet file  
   std::string sbet_filename=GetFileFolderName(pose_graph_filename)+"/trajecotry_sbet.OUT";
   carto::io::TrajectoryExtractor trajectory_extractor(pose_graph_proto);
   //shift to be applied to the trajectory
@@ -220,8 +219,7 @@ void Run(const std::string& pose_graph_filename,
         ROS_ERROR_STREAM("could not find initial ecef position from bag");
       }
 
-   }
-   trajectory_extractor.ExtractToTextFile(text_filename);
+   }   
    trajectory_extractor.ExtractToSBETFile(sbet_filename,origin_ecef);
 
   do {
